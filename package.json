@@ -1,12 +1,14 @@
 {
-  "name": "electron-quick-start",
-  "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "name": "js-counter",
+  "version": "1.0.4",
+  "description": "A minimal Electron application with auto update",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "build",
+    "ship": "build --linux -p always"
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/aljubaer/electron-app-running-background",
   "keywords": [
     "Electron",
     "quick",
@@ -14,9 +16,41 @@
     "tutorial",
     "demo"
   ],
-  "author": "GitHub",
+  "author": "GitHub <bsse0812@iit.du.ac.bd>",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "^4.0.4"
+    "electron": "^4.0.6",
+    "electron-builder": "^19.20.1"
+  },
+  "dependencies": {
+    "electron-updater": "^3.1.2",
+    "jshint": "^2.10.1",
+    "opn": "^5.4.0"
+  },
+  "build": {
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "icon": "256x256.png",
+      "category": "System",
+      "synopsis": "monitoring apps",
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "aljubaer",
+          "repo": "electron-app-running-background"
+        }
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "aljubaer",
+        "repo": "electron-app-running-background"
+      }
+    ],
+    "asar": false,
+    "asarUnpack": "scripts"
   }
 }

@@ -1,75 +1,115 @@
-// Modules to control application life and create native browser window
-const {app, BrowserWindow, Tray, Menu} = require('electron')
+//jshint esversion: 6
+const electron = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog } = electron;
+const path = require('path');
+const { powerSaveBlocker } = require('electron');
+const fs = require("fs");
+const https = require("https");
+const opn = require('opn');
 
-// Keep a global reference of the window object, if you don't, the window will
-// be closed automatically when the JavaScript object is garbage collected.
-let win
+const file = fs.createWriteStream("version.json");
+var currentVersion = '2.0.1';
 
-var iconpath = './icon.png';
+const id = powerSaveBlocker.start('prevent-app-suspension');
+console.log(powerSaveBlocker.isStarted(id));
 
-function createWindow () {
-  // Create the browser window.
-  win = new BrowserWindow({ width: 600, height: 600, icon: iconpath })
+let win;
 
-  win.loadFile('index.html');
+var iconpath = path.join(__dirname, "256x256.png");
 
-  var appIcon = new Tray(iconpath)
+const options = {
+	type: 'question',
+	buttons: ['Cancel', 'Yes, update now', 'Ask me later'],
+	defaultId: 2,
+	title: 'New update',
+	message: 'New update available. Do you want to install it?',
+	detail: 'It does not really matter',
+};
 
-  var contextMenu = Menu.buildFromTemplate([
-      {
-          label: 'Show App', click: function () {
-              win.show()
-          }
-      },
-      {
-          label: 'Quit', click: function () {
-              app.isQuiting = true
-              app.quit();
-          }
-      }
-  ])
+function createWindow() {
+	// Create the browser window.
+	win = new BrowserWindow({ width: 600, height: 600, icon: iconpath });
 
-  appIcon.setContextMenu(contextMenu)
+	win.loadFile('index.html');
 
-  win.on('close', function (event) {
-    if (!app.isQuiting){
-      event.preventDefault();
-      win.hide();
-    }
-    return false;   
-  })
+	var appIcon = new Tray(iconpath);
 
-  win.on('minimize', function (event) {
-      event.preventDefault()
-      win.hide()
-  })
+	var contextMenu = Menu.buildFromTemplate([
+		{
+			label: 'Show App', click: function () {
+				win.show();
+			}
+		},
+		{
+			label: 'Quit', click: function () {
+				app.isQuiting = true;
+				app.quit();
+			}
+		}
+	]);
 
-  win.on('show', function () {
-      appIcon.setHighlightMode('always')
-  })
+	appIcon.setContextMenu(contextMenu);
+
+	win.on('close', function (event) {
+		if (!app.isQuiting) {
+			event.preventDefault();
+			win.hide();
+		}
+		return false;
+	});
+
+	win.on('minimize', function (event) {
+		event.preventDefault();
+		win.hide();
+	});
+
+	win.on('show', function () {
+		appIcon.setHighlightMode('always');
+	});
+
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on('ready', createWindow)
-
-// Quit when all windows are closed.
-// app.on('window-all-closed', function () {
-//   // On macOS it is common for applications and their menu bar
-//   // to stay active until the user quits explicitly with Cmd + Q
-//   if (process.platform !== 'darwin') {
-//     app.quit()
-//   }
-// })
+app.on('ready', () => {
+	createWindow();
+	electron.powerMonitor.on('suspend', () => {
+		console.log('The system is going to sleep');
+	});
+	electron.powerMonitor.on('resume', () => {
+		console.log('The system is resumed');
+	});
+	checkForUpdate();
+});
 
 app.on('activate', function () {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (mainWindow === null) {
-    createWindow()
-  }
-})
+	if (mainWindow === null) {
+		createWindow();
+	}
+});
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+function checkForUpdate() {
+	https.get("https://raw.githubusercontent.com/aljubaer/electron-app-running-background/master/version.json", response => {
+		var stream = response.pipe(file);
+
+		stream.on("finish", function () {
+			console.log("done");
+			// Get content from file
+			var contents = fs.readFileSync("./version.json");
+			// Define to JSON type
+			var jsonContent = JSON.parse(contents);
+			let newVersion = jsonContent.version;
+			let url = jsonContent.url;
+			if (newVersion > currentVersion) {
+				console.log('Update available');
+				currentVersion = newVersion;
+				dialog.showMessageBox(null, options, (response) => {
+					console.log(response);
+					if (response == 1) {
+						opn(url);
+					}
+				});
+			} else {
+				console.log('No update');
+			}
+		});
+	});
+}
